@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export enum ProviderType {
   BATTERY = 'battery',
+  BLUETOOTH = 'bluetooth',
   CPU = 'cpu',
   DATE = 'date',
   GLAZEWM = 'glazewm',

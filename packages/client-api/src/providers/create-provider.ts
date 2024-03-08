@@ -1,6 +1,10 @@
 import type { Owner } from 'solid-js';
 
+import type { ElementContext } from '~/element-context.model';
+import { ProviderType, type ProviderConfig } from '~/user-config';
+import type { PickPartial } from '~/utils';
 import { createBatteryProvider } from './battery/create-battery-provider';
+import { createBluetoothProvider } from './bluetooth/create-bluetooth-provider';
 import { createCpuProvider } from './cpu/create-cpu-provider';
 import { createDateProvider } from './date/create-date-provider';
 import { createGlazewmProvider } from './glazewm/create-glazewm-provider';
@@ -12,9 +16,6 @@ import { createMonitorsProvider } from './monitors/create-monitors-provider';
 import { createNetworkProvider } from './network/create-network-provider';
 import { createSelfProvider } from './self/create-self-provider';
 import { createWeatherProvider } from './weather/create-weather-provider';
-import { ProviderType, type ProviderConfig } from '~/user-config';
-import type { ElementContext } from '~/element-context.model';
-import type { PickPartial } from '~/utils';
 
 export async function createProvider(
   elementContext: PickPartial<
@@ -27,6 +28,8 @@ export async function createProvider(
   switch (config.type) {
     case ProviderType.BATTERY:
       return createBatteryProvider(config, owner);
+    case ProviderType.BLUETOOTH:
+      return createBluetoothProvider(config, owner);
     case ProviderType.CPU:
       return createCpuProvider(config, owner);
     case ProviderType.DATE:

@@ -1,4 +1,5 @@
 pub mod battery;
+pub mod bluetooth;
 pub mod config;
 pub mod cpu;
 pub mod host;
