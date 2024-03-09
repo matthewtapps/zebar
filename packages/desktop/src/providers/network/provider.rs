@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_trait::async_trait;
 use netdev::interface::{
-  get_default_interface, get_interfaces, Interface,
+  get_default_interface, get_interfaces,
 };
 use tokio::{sync::Mutex, task::AbortHandle};
 
@@ -20,12 +20,7 @@ use super::{
 pub struct NetworkProvider {
   pub config: Arc<NetworkProviderConfig>,
   abort_handle: Option<AbortHandle>,
-  netdev_data: Arc<Mutex<NetdevData>>,
-}
-
-pub struct NetdevData {
-  pub default_interface: Arc<Mutex<Interface>>,
-  pub interfaces: Arc<Mutex<Vec<Interface>>>,
+  state: Arc<Mutex<()>>,
 }
 
 impl NetworkProvider {
@@ -33,12 +28,7 @@ impl NetworkProvider {
     NetworkProvider {
       config: Arc::new(config),
       abort_handle: None,
-      netdev_data: Arc::new(Mutex::new(NetdevData {
-        default_interface: Arc::new(Mutex::new(
-          get_default_interface().unwrap(),
-        )),
-        interfaces: Arc::new(Mutex::new(get_interfaces())),
-      })),
+      state: Arc::new(Mutex::new(())),
     }
   }
 }
@@ -46,14 +36,14 @@ impl NetworkProvider {
 #[async_trait]
 impl IntervalProvider for NetworkProvider {
   type Config = NetworkProviderConfig;
-  type State = Mutex<NetdevData>;
+  type State = ();
 
   fn config(&self) -> Arc<NetworkProviderConfig> {
     self.config.clone()
   }
 
-  fn state(&self) -> Arc<Mutex<NetdevData>> {
-    self.netdev_data.clone()
+  fn state(&self) -> Arc<()> {
+    Arc::new(())
   }
 
   fn abort_handle(&self) -> &Option<AbortHandle> {
@@ -66,52 +56,53 @@ impl IntervalProvider for NetworkProvider {
 
   async fn get_refreshed_variables(
     _: &NetworkProviderConfig,
-    netdev_data: &Mutex<NetdevData>,
+    state: &(),
   ) -> Result<ProviderVariables> {
-    let netdev = netdev_data.lock().await;
+    let default_interface = get_default_interface().unwrap();
 
-    let default_interface = netdev.default_interface.lock().await.clone();
+    let interfaces = get_interfaces();
 
-    let interfaces = netdev.interfaces.lock().await;
-
-    #[cfg(target_os = "windows")]
     let default_gateway_ssid_and_strength =
-      get_primary_interface_ssid_and_strength()?;
-
-    #[cfg(not(target_os = "windows"))]
-    let default_gateway_ssid_and_strength = {
-      let ssid = None;
-      let signal = None;
-      let connected = false;
-      Gateway { ssid, signal, connected };
-    };
+      get_primary_interface_ssid_and_strength()?; // Returns ssid = None, signal = None, connected = false if not on Windows for now
 
     let variables = NetworkVariables {
       default_interface: NetworkInterface {
         name: default_interface.name.clone(),
         friendly_name: default_interface.friendly_name.clone(),
         description: default_interface.description.clone(),
-        if_type: default_interface.if_type,
+        interface_type: default_interface.if_type,
         ipv4: default_interface.ipv4.clone(),
         ipv6: default_interface.ipv6.clone(),
-        mac_addr: default_interface.mac_addr.unwrap(),
+        mac_address: default_interface.mac_addr.unwrap(),
         transmit_speed: default_interface.transmit_speed,
         receive_speed: default_interface.receive_speed,
         dns_servers: default_interface.dns_servers.clone(),
-        default: default_interface.default,
+        is_default: default_interface.default,
       },
       default_gateway: Gateway {
-        mac_addr: default_interface
+        mac_address: default_interface
           .gateway
           .as_ref()
           .unwrap()
           .mac_addr
           .clone(),
-        ipv4: default_interface.gateway.as_ref().unwrap().ipv4.clone(),
-        ipv6: default_interface.gateway.as_ref().unwrap().ipv6.clone(),
+        ipv4_addresses: default_interface
+          .gateway
+          .as_ref()
+          .unwrap()
+          .ipv4
+          .clone(),
+        ipv6_addresses: default_interface
+          .gateway
+          .as_ref()
+          .unwrap()
+          .ipv6
+          .clone(),
         ssid: default_gateway_ssid_and_strength.ssid.unwrap(),
-        signal_strength_percent: default_gateway_ssid_and_strength.signal.unwrap(),
-        connected: default_gateway_ssid_and_strength.connected,
+        signal_strength_percent: default_gateway_ssid_and_strength
+          .signal
+          .unwrap(),
+        is_connected: default_gateway_ssid_and_strength.connected,
       },
       interfaces: interfaces
         .iter()
@@ -119,14 +110,14 @@ impl IntervalProvider for NetworkProvider {
           name: iface.name.clone(),
           friendly_name: iface.friendly_name.clone(),
           description: iface.description.clone(),
-          if_type: iface.if_type.clone(),
+          interface_type: iface.if_type.clone(),
           ipv4: iface.ipv4.clone(),
           ipv6: iface.ipv6.clone(),
-          mac_addr: iface.mac_addr.unwrap().clone(),
+          mac_address: iface.mac_addr.unwrap().clone(),
           transmit_speed: iface.transmit_speed,
           receive_speed: iface.receive_speed,
           dns_servers: iface.dns_servers.clone(),
-          default: iface.default,
+          is_default: iface.default,
         })
         .collect(),
     };
