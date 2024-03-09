@@ -1,34 +1,30 @@
-use std::{future::IntoFuture, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tokio::{sync::Mutex, task::AbortHandle};
 use bluest::Adapter;
+use tokio::{sync::Mutex, task::AbortHandle};
 
 use crate::providers::{
-  interval_provider::IntervalProvider,
-  variables::ProviderVariables,
+  interval_provider::IntervalProvider, variables::ProviderVariables,
 };
 
 use super::{
-  BluetoothProviderConfig, BluetoothVariables,
+  BluetoothProviderConfig, BluetoothVariables, LocalDevice, LocalService,
 };
 
 pub struct BluetoothProvider {
   pub config: Arc<BluetoothProviderConfig>,
   abort_handle: Option<AbortHandle>,
-  adapter: Arc<Mutex<Adapter>>,
+  state: Arc<Mutex<()>>,
 }
 
-#[allow(dead_code)]
 impl BluetoothProvider {
   pub async fn new(config: BluetoothProviderConfig) -> BluetoothProvider {
-    let adapter = Adapter::default().await.unwrap(); // Await the completion of the Adapter::default() future and unwrap the Option<Adapter> to get the Adapter instance.
-
     BluetoothProvider {
       config: Arc::new(config),
       abort_handle: None,
-      adapter: Arc::new(Mutex::new(adapter)),
+      state: Arc::new(Mutex::new(())),
     }
   }
 }
@@ -36,14 +32,14 @@ impl BluetoothProvider {
 #[async_trait]
 impl IntervalProvider for BluetoothProvider {
   type Config = BluetoothProviderConfig;
-  type State = Mutex<Adapter>;
+  type State = ();
 
   fn config(&self) -> Arc<BluetoothProviderConfig> {
     self.config.clone()
   }
 
-  fn state(&self) -> Arc<Mutex<Adapter>> {
-    self.adapter.clone()
+  fn state(&self) -> Arc<()> {
+    Arc::new(())
   }
 
   fn abort_handle(&self) -> &Option<AbortHandle> {
@@ -56,21 +52,37 @@ impl IntervalProvider for BluetoothProvider {
 
   async fn get_refreshed_variables(
     _: &BluetoothProviderConfig,
-    adapter: &Mutex<Adapter>,
+    _state: &(),
   ) -> Result<ProviderVariables> {
-
-    let adapter = adapter.lock().await;
+    let adapter = Adapter::default().await.unwrap();
 
     let connected_devices = adapter.connected_devices().await?;
 
     println!("Connected devices: {:?}", connected_devices);
 
+    let mut devices: Vec<LocalDevice> = vec![];
+
     for device in connected_devices {
       println!("Device: {:?}", device);
+      let external_services = device.services().await.unwrap();
+      let mut services: Vec<LocalService> = vec![];
+      for service in external_services {
+        services.push(LocalService {
+          uuid: service.uuid().to_string(),
+          is_primary: service.is_primary().await.unwrap(),
+        });
+      }
+      devices.push(LocalDevice {
+        local_name: device.name().unwrap(),
+        is_connected: device.is_connected().await,
+        is_paired: device.is_paired().await.unwrap(),
+        services,
+        rssi: device.rssi().await.unwrap(),
+      });
     }
 
     let variables = BluetoothVariables {
-      connected_devices: vec![],
+      connected_devices: devices,
     };
 
     Ok(ProviderVariables::Bluetooth(variables))

@@ -10,8 +10,8 @@ pub struct BluetoothVariables {
 #[serde(rename_all = "camelCase")]
 pub struct LocalDevice {
   pub local_name: String,
-  pub is_connected: String,
-  pub is_paired: String,
+  pub is_connected: bool,
+  pub is_paired: bool,
   pub services: Vec<LocalService>,
   pub rssi: i16,
 }

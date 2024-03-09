@@ -9,15 +9,15 @@ export interface BluetoothVariables {
 
 export interface Device {
     localName: String,
-    is_connected: String,
-    is_paired: String,
+    isConnected: String,
+    isPaired: String,
     services: Service[],
     rssi: number,
 }
 
 interface Service {
     uuid: String,
-    is_primary: boolean,
+    isPrimary: boolean,
 }
 
 export async function createBluetoothProvider(

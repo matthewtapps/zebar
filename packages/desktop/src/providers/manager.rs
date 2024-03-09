@@ -1,6 +1,5 @@
 use std::{
-  sync::Arc,
-  time::{Duration, Instant},
+  future::IntoFuture, sync::Arc, time::{Duration, Instant}
 };
 
 use anyhow::{bail, Context, Result};
@@ -21,9 +20,9 @@ use crate::providers::provider::Provider;
 #[cfg(all(windows, target_arch = "x86_64"))]
 use super::komorebi::KomorebiProvider;
 use super::{
-  battery::BatteryProvider, config::ProviderConfig, cpu::CpuProvider,
-  host::HostProvider, ip::IpProvider, memory::MemoryProvider,
-  network::NetworkProvider,
+  battery::BatteryProvider, bluetooth::BluetoothProvider,
+  config::ProviderConfig, cpu::CpuProvider, host::HostProvider,
+  ip::IpProvider, memory::MemoryProvider, network::NetworkProvider,
   variables::ProviderVariables, weather::WeatherProvider,
 };
 
@@ -196,6 +195,9 @@ fn create_provider(
   let provider: Box<dyn Provider + Send> = match config {
     ProviderConfig::Battery(config) => {
       Box::new(BatteryProvider::new(config)?)
+    }
+    ProviderConfig::Bluetooth(config) => {
+      Box::new(BluetoothProvider::new(config))
     }
     ProviderConfig::Cpu(config) => {
       Box::new(CpuProvider::new(config, sysinfo))

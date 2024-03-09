@@ -1,4 +1,5 @@
 export * from './battery/create-battery-provider';
+export * from './bluetooth/create-bluetooth-provider';
 export * from './cpu/create-cpu-provider';
 export * from './date/create-date-provider';
 export * from './glazewm/create-glazewm-provider';

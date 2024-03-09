@@ -3,9 +3,10 @@ use serde::Serialize;
 #[cfg(all(windows, target_arch = "x86_64"))]
 use super::komorebi::KomorebiVariables;
 use super::{
-  battery::BatteryVariables, cpu::CpuVariables, host::HostVariables,
-  ip::IpVariables, memory::MemoryVariables, network::NetworkVariables,
-  weather::WeatherVariables, bluetooth::BluetoothVariables,
+  battery::BatteryVariables, bluetooth::BluetoothVariables,
+  cpu::CpuVariables, host::HostVariables, ip::IpVariables,
+  memory::MemoryVariables, network::NetworkVariables,
+  weather::WeatherVariables,
 };
 
 #[derive(Serialize, Debug, Clone)]
